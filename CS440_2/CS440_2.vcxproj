@@ -95,7 +95,9 @@
     <Text Include="readme.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="citygen.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="travellingSales.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="uf20-91.tar\uf20-01.cnf" />
