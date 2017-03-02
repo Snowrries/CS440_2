@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <math.h>
+#include <time.h>
 
 int variables, clauses;
 char* format;
@@ -105,13 +106,16 @@ int* selection(int *csat) {
 	free(normalizedcsat);
 	return ret;
 }
-void solve() {
+double* solve() {
+	clock_t begin = clock();
 	int** states = (int**)malloc(sizeof(int*) * 10);
 	int** statestemp = (int**)malloc(sizeof(int*) * 10);
 	int* csat = (int*)malloc(sizeof(int) * 10);
 	int* selected;
 	int* toRemove = (int*)malloc(sizeof(int) * 10);
 	int* temp1, temp2;
+	double* retval = (double*)malloc(sizeof(double) * 2);
+	double bitflips = 0;
 	int e1, e2, temp, tempa, improved;
 	e1 = 0; e2 = 0;
 	int i, j;
@@ -168,6 +172,7 @@ void solve() {
 					temp = states[i][j];
 					states[i][j] = states[i + 1][j];
 					states[i + 1][j] = temp;
+					bitflips++;
 				}
 			}
 		}
@@ -179,6 +184,7 @@ void solve() {
 				for (j = 0; j < variables; j++) {
 					if (rand() % 2) {
 						states[i][j] = !states[i][j];
+						bitflips++;
 					}
 				}
 			}
@@ -193,10 +199,12 @@ void solve() {
 				improved = 0;
 				for (j = 0; j < variables; j++) {
 					states[i][j] = !states[i][j];
+					bitflips++;
 					tempa = clausesSatisfied(states[i]);
 					if (temp > tempa) {
 						improved = 1;
 						states[i][j] = !states[i][j];
+						bitflips++;
 					}
 					else {
 						temp = tempa;
@@ -206,16 +214,32 @@ void solve() {
 			csat[i] = temp;
 		}
 	}
+	for (i = 0; i < 10; i++) {
+		free(states[i]);
+	}
+	free(states);
+	free(statestemp);
+	free(csat);
+	free(selected);
+	free(toRemove);
+
+	retval[0] = (double)(clock() - begin) / CLOCKS_PER_SEC;
+	retval[1] = bitflips;
+	return retval;
 }
 
 int main() {
+	double* answer;
 	for (int j = 20; j <= 100; j += 25) {
 		//Solve 100 instances for each of 20, 50, 75, 100 variable instances
 		for (int i = 1; i < 101; i++)
 		{
 			readInput(j, i);
-			solve();
-			//Write output
+			//We would like runtime and bit flips. 
+			//answer[0] is runtime, answer[1] is bitflips
+			answer = solve();
+			//Write output to file
+
 		}
 		if (j == 20) j += 5;
 	}
