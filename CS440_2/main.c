@@ -77,18 +77,75 @@ int clausesSatisfied(int* test) {
 	}
 	return sat;
 }
-
+int* selection(int *csat) {
+	int sum = 0;
+	int randomint;
+	int* normalizedcsat = (int*)malloc(sizeof(int) * 10);
+	int* ret = (int*)malloc(sizeof(int) * 8);
+	for (int i = 0; i < 10; i++) {
+		sum += csat[i];
+	}
+	for (int i = 0; i < 10; i++) {
+		normalizedcsat[i] = (100 * csat[i]) / sum;
+	}
+	for (int i = 1; i < 10; i++) {
+		normalizedcsat[i] += normalizedcsat[i - 1];
+	}
+	for (int i = 0; i < 8; i++) {
+		randomint = rand() % 100;
+		for (int j = 0; j < 10; j++) {
+			if (normalizedcsat[j] > randomint) {
+				ret[i] = j;
+				break;
+			}
+		}
+	}
+	free(normalizedcsat);
+	return ret;
+}
 void solve() {
 	int** states = (int**)malloc(sizeof(int*) * 10);
-	for (int i = 0; i < 10; i++) {
+	int** statestemp = (int**)malloc(sizeof(int*) * 10);
+	int* csat = (int*)malloc(sizeof(int) * 10);
+	int* selected;
+	int* toRemove = (int*)malloc(sizeof(int) * 10);
+	int* temp1, temp2;
+	int e1, e2;
+	e1 = 0; e2 = 0;
+	int i, j;
+
+	for (i = 0; i < 10; i++) {
 		states[i] = (int*)malloc(sizeof(int) * variables);
+		for (j = 0; j < variables; j++) {
+			states[i][j] = rand()%2;
+		}
+		csat[i] = clausesSatisfied(states[i]);
+		if (csat[i] > e1) {
+			e2 = e1;
+			e1 = csat[i];
+		}
+	}
+	//Perform selection
+	selected = selection(csat);
+	statestemp[8] = states[e1];
+	statestemp[9] = states[e2];
+
+	for (i = 0; i < 8; i++) {
+		statestemp[i] = states[selected[i]];
+	}
+	for (i = 0; i < 8; i++) {
+		states[selected[i]] = NULL;
 	}
 
-
-
-
-
-
+	states[e1] = NULL;
+	states[e2] = NULL;
+	//Memory management is important.
+	for (i = 0; i < 10; i++) {
+		if (states[i] != NULL) {
+			free(states[i]);
+		}
+		states[i] = statestemp[i];
+	}
 
 
 
@@ -96,18 +153,15 @@ void solve() {
 }
 
 int main() {
-	//For uf20
-	for (int i = 0; i < 1000; i++)
-	{
-		readInput(20, i);
-		solve();
-
-
+	for (int j = 20; j <= 100; j += 25) {
+		//Solve 100 instances for each of 20, 50, 75, 100 variable instances
+		for (int i = 1; i < 101; i++)
+		{
+			readInput(j, i);
+			solve();
+			//Write output
+		}
+		if (j == 20) j += 5;
 	}
-
-
-
-
-
 	return 0;
 }
