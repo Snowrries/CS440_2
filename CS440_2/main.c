@@ -40,6 +40,8 @@ int readInput(int vars, int i) {
 
 	return 0;
 }
+
+//Checks how many clauses are satisfied by the input. O(n)
 int clausesSatisfied(int* test) {
 	int a, b, c;
 	int t1, t2, t3;
@@ -110,46 +112,100 @@ void solve() {
 	int* selected;
 	int* toRemove = (int*)malloc(sizeof(int) * 10);
 	int* temp1, temp2;
-	int e1, e2;
+	int e1, e2, temp, tempa, improved;
 	e1 = 0; e2 = 0;
 	int i, j;
 
 	for (i = 0; i < 10; i++) {
 		states[i] = (int*)malloc(sizeof(int) * variables);
 		for (j = 0; j < variables; j++) {
-			states[i][j] = rand()%2;
+			states[i][j] = rand() % 2;
 		}
 		csat[i] = clausesSatisfied(states[i]);
 		if (csat[i] > e1) {
-			e2 = e1;
 			e1 = csat[i];
 		}
 	}
-	//Perform selection
-	selected = selection(csat);
-	statestemp[8] = states[e1];
-	statestemp[9] = states[e2];
-
-	for (i = 0; i < 8; i++) {
-		statestemp[i] = states[selected[i]];
-	}
-	for (i = 0; i < 8; i++) {
-		states[selected[i]] = NULL;
-	}
-
-	states[e1] = NULL;
-	states[e2] = NULL;
-	//Memory management is important.
-	for (i = 0; i < 10; i++) {
-		if (states[i] != NULL) {
-			free(states[i]);
+	while (e1 < clauses) {
+		//Seperate elites
+		for (i = 0; i < 10; i++) {
+			if (csat[i] > e1) {
+				e2 = e1;
+				e1 = csat[i];
+			}
 		}
-		states[i] = statestemp[i];
+
+		//Perform selection
+		selected = selection(csat);
+
+		//Save elite states and do some copying so we can free the unused states
+		statestemp[8] = states[e1];
+		statestemp[9] = states[e2];
+
+		for (i = 0; i < 8; i++) {
+			statestemp[i] = states[selected[i]];
+		}
+		for (i = 0; i < 8; i++) {
+			states[selected[i]] = NULL;
+		}
+		states[e1] = NULL;
+		states[e2] = NULL;
+		//Memory management is important.
+		for (i = 0; i < 10; i++) {
+			if (states[i] != NULL) {
+				free(states[i]);
+			}
+			states[i] = statestemp[i];
+		}
+
+		//Perform uniform crossover
+		//For each of the 4 selected pairs, swap a variable with a 50% chance
+		//Operations performed: 4 * variables
+		//Elite states do not participate in crossover
+		for (i = 0; i < 7; i += 2) {
+			for (j = 0; j < variables; j++) {
+				if (rand() % 2) {
+					temp = states[i][j];
+					states[i][j] = states[i + 1][j];
+					states[i + 1][j] = temp;
+				}
+			}
+		}
+
+		//Perform disruptive mutation
+
+		for (i = 0; i < 7; i++) {
+			if ((rand() % 10) < 8) {
+				for (j = 0; j < variables; j++) {
+					if (rand() % 2) {
+						states[i][j] = !states[i][j];
+					}
+				}
+			}
+		}
+
+		//Flip Heuristic
+		// 8*variable calls to clausesSatisfied, which iterates over all clauses
+		for (i = 0; i < 8; i++) {
+			improved = 1;
+			temp = csat[i];
+			while (improved) {
+				improved = 0;
+				for (j = 0; j < variables; j++) {
+					states[i][j] = !states[i][j];
+					tempa = clausesSatisfied(states[i]);
+					if (temp > tempa) {
+						improved = 1;
+						states[i][j] = !states[i][j];
+					}
+					else {
+						temp = tempa;
+					}
+				}
+			}
+			csat[i] = temp;
+		}
 	}
-
-
-
-
 }
 
 int main() {
