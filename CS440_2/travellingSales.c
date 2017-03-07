@@ -33,7 +33,7 @@ typedef struct citypair_ {
 typedef struct pqn_ {
 	int id;
 	citypair *self;
-	citypair *child;
+	pqn *child;
 	double f;
 } pqn;
 
@@ -109,11 +109,12 @@ int readOneProblem(int world, int cities) {
 	sprintf(filename, "world%2d%3d", world, cities);
 	newfile = fopen(filename, "r");
 	pqn* fringehead;
+	pqn* tempfree;
 	fscanf(newfile, "%*d\n");
 	//Ignore the first line, it's just the number of cities in the file
 
 	*citypairs = (citypair*)malloc(sizeof(citypair) * cities);
-	**iclosed = (citypair**)malloc(sizeof(citypair*) * cities);
+	**iclosed = (citypair**)malloc(sizeof(citypair*) * cities); //Stands for implicit closed list.
 
 	furthest = 1;
 	for (int i = 0; i < cities; i++) {
@@ -131,22 +132,60 @@ int readOneProblem(int world, int cities) {
 	fringehead->child = NULL;
 	fringehead->self = &citypairs[0];
 
-	while (fringehead->self != NULL) {
+	while (fringehead != NULL) {
 		citypair* dqd = fringehead->self;
-		fringehead->self = fringehead->child;
 		iclosed[fringehead->id] = NULL;
+		tempfree = fringehead;
+		fringehead = fringehead->child;
+		free(tempfree);
 		//dequeue
 		//Do an O(n) check against every node to find the min(4, remaining nodes) closest neighbors, 
 		//then enqueue to fringe based on g + heuristic
 		//Update g values of the enqueued nodes
-		
-		double currentg = iclosed[999]->g;
-		double cost2next = dqd->g + cost(dqd, iclosed[999]);
-		if (currentg > cost2next)
-			iclosed[999]->g = cost2next;
-
-
-
+		int* neighbors = find_closest(dqd, cities);
+		double currentg;
+		double cost2next;
+		for (int j = 0; j < 4; j++) {
+			//The four closest neighbors; enqueue them if the current calculated g value is less than 
+			//Make sure the enqueue operation keeps the list in sorted order of f
+			if (neighbors[j] != -1) {
+				currentg = iclosed[neighbors[j]]->g;
+				cost2next = dqd->g + cost(dqd, iclosed[neighbors[j]]);
+				if (cost2next < currentg) {
+					iclosed[neighbors[j]]->g = cost2next;
+					//Enqueue the neighbor into the fringe!
+					//Node creation
+					pqn* fringenode = (pqn*) malloc(sizeof(pqn));
+					fringenode->self = iclosed[neighbors[j]];
+					fringenode->f = cost2next + heuristic(iclosed[neighbors[j]], iclosed[furthest]);
+					fringehead->child = NULL;
+					pqn* anothernode = fringehead;
+					//Search for insert index
+					if (fringehead == NULL) {
+						fringehead = fringenode;
+					}
+					else {
+						// If the current node is less costly than the first node in the list,
+						// replace the head reference
+						if (fringenode->f < fringehead->f) { 
+							fringenode->child = fringehead;
+							fringehead = fringenode;
+						}
+						citypair savedRef;
+						while (anothernode != NULL) {
+							if (fringenode->f < anothernode->f) {
+								fringenode->child = anothernode;
+								break;
+							}
+							if (anothernode->child == NULL) {
+								anothernode->child = fringenode;
+							}
+							anothernode = anothernode->child;
+						}
+					}
+				}
+			}
+		}
 	}
 
 
