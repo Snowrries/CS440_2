@@ -14,8 +14,8 @@ int* nodesGenerated;
 int* averageQuality;
 int furthest;
 
-citypair *citypairs;
-citypair **iclosed;
+citypair* citypairs;
+citypair** iclosed;
 
 double cost(citypair* current, citypair* goal) {
 	return sqrt((pow(current->x - goal->x, 2) + pow(current->y - goal->y, 2)));
@@ -113,8 +113,8 @@ int readOneProblem(int world, int cities) {
 	fscanf(newfile, "%*d\n");
 	//Ignore the first line, it's just the number of cities in the file
 
-	*citypairs = (citypair*)malloc(sizeof(citypair) * cities);
-	**iclosed = (citypair**)malloc(sizeof(citypair*) * cities); //Stands for implicit closed list.
+	citypairs = (citypair*)malloc(sizeof(citypair) * cities);
+	iclosed = (citypair**)malloc(sizeof(citypair*) * cities); //Stands for implicit closed list.
 
 	furthest = 1;
 	for (int i = 0; i < cities; i++) {
@@ -188,21 +188,66 @@ int readOneProblem(int world, int cities) {
 		}
 	}
 
-
-
-	//Perform A* starting with the first pair.
-	//In each step, we select a node to add to the path. Then we 
-	/*Initial state : The empty assignment in which all variables are unassigned
-		Successor function : A value is assigned to a variable, assuming it doesn’t violate any constraints.
-		The approach retains consistent or valid assignments throughout the problem.
-		Goal test : Is the assignment complete ?
-		Path cost : 1 for every step.*/
-	
-
 	free(citypairs);
 }
 
+int readOneProblem_SA(int world, int cities) {
+	int T = 1000;
+	citypair current = citypairs[0];
+	double E;
+	double Enext;
+	int swap1, swap2;
+	citypair* temp;
+	FILE* newfile;
+	char* filename = (char*)malloc(sizeof(char) * 100);
+	sprintf(filename, "world%2d%3d", world, cities);
+	newfile = fopen(filename, "r");
+	fscanf(newfile, "%*d\n");
+	//Ignore the first line, it's just the number of cities in the file
 
+	*citypairs = (citypair*)malloc(sizeof(citypair) * cities);
+	citypair *tempforswaps = citypairs;
+
+	for (int i = 0; i < cities; i++) {
+		fscanf(newfile, "%*d %d %d", citypairs[i].x, citypairs[i].y);
+	}
+
+	// Initialize path by going down the list in order of the cities that were generated
+	// Then return to start city, and record total path length. 
+	for (int i = 0; i < cities-1; i++) {
+		E += cost(&tempforswaps[i], &tempforswaps[i + 1]);
+	}
+	E += cost(&tempforswaps[cities - 1], &tempforswaps[0]);
+
+
+
+	while (T > 0) {
+		// Decrement T in some way
+		T--; 
+		//Swap two random cities and test if the evaluation is improved
+		swap1 = rand() % cities;
+		swap2 = rand() % cities;
+		temp = citypairs[swap1];
+		citypairs[swap1] = citypairs[swap2];
+		citypairs[swap2] = citypairs[swap1];
+
+		for (int i = 0; i < cities - 1; i++) {
+			Enext += cost(&tempforswaps[i], &tempforswaps[i + 1]);
+		}
+		Enext += cost(&tempforswaps[cities - 1], &tempforswaps[0]);
+
+		if (Enext < E) {
+			citypairs = tempforswaps; // Potentially can't do this, maybe need to make new copy of wrapper and copy refrences and then use this as reference buccket,
+		}
+
+
+
+	}
+
+
+	free(filename);
+	free(citypairs);
+}
 
 void work10() {
 
@@ -211,34 +256,42 @@ void work10() {
 	averageTime = (float*)malloc(sizeof(float) * 4);
 	nodesGenerated = (int*)malloc(sizeof(int) * 4);
 	averageQuality = (int*)malloc(sizeof(int) * 4);
-	for (int i = 0; i < 4; i++) {
-		problemsSolved[i] = 0;
-		averageTime[i] = 0;
-		nodesGenerated[i] = 0;
-		averageQuality[i] = 0;
-	}
+	clock_t countdown;
+	int world, cities;
 
-	clock_t countdown = clock();
-	int world = -1;
-	int cities = 10;
-	while ((double)(clock() - countdown) / CLOCKS_PER_SEC < 600) {
-		//Do one problem
-		world += 1;
-		if (world > 24)
-		{
-			if (cities == 10) {
-				cities -= 10;
-			}
-			if (cities == 100) {
-				continue; // Finished all problems
-			}
-			cities += 25;
+	for (int twice = 0; twice < 2; twice++) {
+		for (int i = 0; i < 4; i++) {
+			problemsSolved[i] = 0;
+			averageTime[i] = 0;
+			nodesGenerated[i] = 0;
+			averageQuality[i] = 0;
 		}
 
-		readOneProblem(world, cities);
+		countdown = clock();
+		world = -1;
+		cities = 10;
+		while ((double)(clock() - countdown) / CLOCKS_PER_SEC < 600) {
+			//Do one problem
+			world += 1;
+			if (world > 24)
+			{
+				if (cities == 10) {
+					cities -= 10;
+				}
+				if (cities == 100) {
+					continue; // Finished all problems
+				}
+				cities += 25;
+			}
+			if (twice == 0)
+				readOneProblem(world, cities);
+			else
+				readOneProblem_SA(world, cities);
+		}
+		//write results to disc
+
 	}
 
-	//write results to disc
 	//free all the things
 
 }
