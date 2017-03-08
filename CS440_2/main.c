@@ -2,43 +2,51 @@
 #include <stdarg.h>
 #include <math.h>
 #include <time.h>
+#include <direct.h>
 
 int variables, clauses;
-char* format;
 int* allClauses;
 
 int readInput(int vars, int i) {
-	char* filename;
 	FILE* problems;
-	char* buffer;
+	char* buffer = (char*) malloc( sizeof(char) * 2000);
+	char* format = (char*)malloc(sizeof(char) * 4); //cnf
+	char* filename = (char*)malloc(sizeof(char) * 50);
 	char check;
-	format = (char*)malloc(sizeof(char) * 4); //cnf
-	filename = (char*)malloc(sizeof(char) * 500);
-	sprintf(filename, "uf%d-0%d.cnf",vars, i);
+	sprintf(filename, "uf20-91\\uf%d-0%d.cnf",vars, i);
 	problems = fopen(filename, "r");
-	fgets(buffer, 500, problems);
+	fgets(buffer, 1000, problems);
 
 	while (buffer[0] == 'c') {
-		fgets(buffer, 500, problems);
+		fgets(buffer, 1000, problems);
 	}
 
-	fscanf(problems, "%c %s %d %d", check, format, variables, clauses);
+	if (sscanf(buffer, "%c %s %d %d", &check, format, &variables, &clauses) < 0) {
+		printf("error in scanf for problem statement");
+		return -1;
+	}
 	if (check != 'p' || format[0] != 'c' || format[1] != 'n' || format[2] != 'f') {
 		printf("File format error.\n");
 		return -1;
 	}
 	allClauses = (int*)malloc(sizeof(int)*clauses * 3);
 	int shouldBeZero;
-	for (int j = 0; j < clauses * 3; j += 3) {
+	for (int j = 0; j < clauses; j++) {
 		//repeat once for every clause
 		//Last one is a zero. Tailored only to work with 3 CNF
-		fscanf(problems, "%d %d %d %d", allClauses[j], allClauses[j + 1], allClauses[j + 2], shouldBeZero);
+		if (fscanf(problems, "%d %d %d %d", &allClauses[j * 3], &allClauses[j * 3 + 1], &allClauses[j * 3 + 2], &shouldBeZero) < 0) {
+			printf("Error in fscanf of clause %d", j);
+			return -1;
+		}
 		if (shouldBeZero != 0) {
 			printf("3-CNF format exception.");
 			return -2;
 		}
 	}
-
+	fclose(problems);
+	free(format);
+	free(buffer);
+	free(filename);
 	return 0;
 }
 
@@ -46,16 +54,34 @@ int readInput(int vars, int i) {
 int clausesSatisfied(int* test) {
 	int a, b, c;
 	int t1, t2, t3;
+	int d, e, f;
 	int gather;
 	int mask;
 	int sat = 0;
 	for (int i = 0; i < clauses; i++) {
-		a = allClauses[clauses * 3];
-		b = allClauses[clauses * 3 + 1];
-		c = allClauses[clauses * 3 + 2];
-		t1 = test[Abs(a)];
-		t2 = test[Abs(b)];
-		t3 = test[Abs(c)];
+		
+		a = allClauses[i * 3];
+		b = allClauses[i * 3 + 1];
+		c = allClauses[i * 3 + 2];
+
+		t1 = test[abs(a)-1];
+		t2 = test[abs(b)-1];
+		t3 = test[abs(c)-1];
+		
+		d = 0; e = 0; f = 0;
+		if (a > 0) d = 1;
+		if (b > 0) e = 1;
+		if (c > 0) f = 1;
+		if ((t1 == d) || (t2 == e) || (t3 == f))
+			sat++;
+		
+		/*/
+		a = allClauses[i * 3];
+		b = allClauses[i * 3 + 1];
+		c = allClauses[i * 3 + 2];
+		t1 = test[abs(a)-1];
+		t2 = test[abs(b)-1];
+		t3 = test[abs(c)-1];
 		//t1, t2, and t3 will be 1 or 0.
 
 		gather = 0;
@@ -76,15 +102,16 @@ int clausesSatisfied(int* test) {
 
 		if ((gather ^ mask) == 0) //If gather xor mask is zero, the clause is satisfied
 			sat++;
+		/**/
 
 	}
 	return sat;
 }
-int* selection(int *csat) {
+
+void selection(int *csat, int* ret) {
 	int sum = 0;
 	int randomint;
 	int* normalizedcsat = (int*)malloc(sizeof(int) * 10);
-	int* ret = (int*)malloc(sizeof(int) * 8);
 	for (int i = 0; i < 10; i++) {
 		sum += csat[i];
 	}
@@ -96,70 +123,91 @@ int* selection(int *csat) {
 	}
 	for (int i = 0; i < 8; i++) {
 		randomint = rand() % 100;
+		ret[i] = -1;
 		for (int j = 0; j < 10; j++) {
-			if (normalizedcsat[j] > randomint) {
+			if (normalizedcsat[j] >= randomint) {
 				ret[i] = j;
 				break;
 			}
 		}
+		if (ret[i] == -1) ret[i] = 9;
 	}
 	free(normalizedcsat);
-	return ret;
 }
+
 double* solve() {
 	clock_t begin = clock();
 	int** states = (int**)malloc(sizeof(int*) * 10);
-	int** statestemp = (int**)malloc(sizeof(int*) * 10);
+	int** statestemp = (int**)malloc(sizeof(int*) * 10);;
 	int* csat = (int*)malloc(sizeof(int) * 10);
-	int* selected;
-	int* toRemove = (int*)malloc(sizeof(int) * 10);
-	int* temp1, temp2;
 	double* retval = (double*)malloc(sizeof(double) * 2);
 	double bitflips = 0;
-	int e1, e2, temp, tempa, improved;
+	int* randomScan = (int*)malloc(sizeof(int) * 10);
+	int forrs;
+	int* selected = (int*)malloc(sizeof(int) * 8);
+	//Mallo c a new temporary array to hold states for copying elites and selecting reproducers
+	
+
+	int e1, e2, ei1, ei2, temp, tempa, improved;
 	e1 = 0; e2 = 0;
+	ei1 = 0; ei2 = 0;
 	int i, j;
 
 	for (i = 0; i < 10; i++) {
-		states[i] = (int*)malloc(sizeof(int) * variables);
+		states[i] = (int*)malloc(sizeof(int) * variables); 
+		statestemp[i] = (int*)malloc(sizeof(int) * variables);
 		for (j = 0; j < variables; j++) {
 			states[i][j] = rand() % 2;
 		}
 		csat[i] = clausesSatisfied(states[i]);
 		if (csat[i] > e1) {
 			e1 = csat[i];
-		}
+			ei1 = i;
+		} // In case we randomly generate a satisfying state
 	}
 	while (e1 < clauses) {
+
 		//Seperate elites
-		for (i = 0; i < 10; i++) {
-			if (csat[i] > e1) {
-				e2 = e1;
-				e1 = csat[i];
+		if (csat[0] > csat[1]) {
+			e1 = csat[0]; e2 = csat[1];
+			ei1 = 0; ei2 = 1;
+		}
+		else {
+			e2 = csat[0]; e1 = csat[1];
+			ei2 = 0; ei1 = 1;
+		}
+		for (i = 2; i < 10; i++) {
+			if (csat[i] > e2) {
+				if (csat[i] > e1) {
+					e2 = e1;
+					e1 = csat[i];
+					ei2 = ei1;
+					ei1 = i;
+				}
+				else {
+					e2 = csat[i];
+					ei2 = i;
+				}
 			}
 		}
 
 		//Perform selection
-		selected = selection(csat);
-
-		//Save elite states and do some copying so we can free the unused states
-		statestemp[8] = states[e1];
-		statestemp[9] = states[e2];
+		selection(csat, selected);
+		//Save elite states and do some copying so we can f r e e the unused states
+		//statestemp[8] = states[e1];
+		//statestemp[9] = states[e2];
+		memcpy(statestemp[8], states[ei1], sizeof(int)*variables);
+		memcpy(statestemp[9], states[ei2], sizeof(int)*variables);
 
 		for (i = 0; i < 8; i++) {
-			statestemp[i] = states[selected[i]];
+			//statestemp[i] = states[selected[i]];
+			memcpy(statestemp[i], states[selected[i]], sizeof(int)*variables);
 		}
-		for (i = 0; i < 8; i++) {
-			states[selected[i]] = NULL;
-		}
-		states[e1] = NULL;
-		states[e2] = NULL;
-		//Memory management is important.
+		// Temporary array now contains the values we desire.
+		// Copy states back to the main
+
 		for (i = 0; i < 10; i++) {
-			if (states[i] != NULL) {
-				free(states[i]);
-			}
-			states[i] = statestemp[i];
+			memcpy(states[i], statestemp[i], sizeof(int)*variables);
 		}
 
 		//Perform uniform crossover
@@ -178,9 +226,8 @@ double* solve() {
 		}
 
 		//Perform disruptive mutation
-
 		for (i = 0; i < 7; i++) {
-			if ((rand() % 10) < 8) {
+			if ((rand() % 10) < 8) { //90% chance of mutation
 				for (j = 0; j < variables; j++) {
 					if (rand() % 2) {
 						states[i][j] = !states[i][j];
@@ -190,56 +237,84 @@ double* solve() {
 			}
 		}
 
+		//Update csat
+		for (i = 0; i < 10; i++) {
+			csat[i] = clausesSatisfied(states[i]);
+		}
 		//Flip Heuristic
 		// 8*variable calls to clausesSatisfied, which iterates over all clauses
 		for (i = 0; i < 8; i++) {
 			improved = 1;
 			temp = csat[i];
 			while (improved) {
+				forrs = 1;
 				improved = 0;
-				for (j = 0; j < variables; j++) {
-					states[i][j] = !states[i][j];
+				for (int j = 0; j < variables; j++) {
+					randomScan[j] = 0;
+				}
+				int selectedvar = -1;
+				while (forrs < variables) {
+					selectedvar = rand() % (variables - 1);
+					while (randomScan[selectedvar]) {
+						selectedvar = (selectedvar+1)%(variables-1);
+					}
+					randomScan[selectedvar] = 1;
+					forrs++;
+					states[i][selectedvar] = !states[i][selectedvar];
 					bitflips++;
 					tempa = clausesSatisfied(states[i]);
-					if (temp > tempa) {
-						improved = 1;
-						states[i][j] = !states[i][j];
+					if (temp >= tempa) {
+						improved = 0;
+						states[i][selectedvar] = !states[i][selectedvar];
 						bitflips++;
 					}
 					else {
 						temp = tempa;
+						improved = 1;
 					}
+
 				}
 			}
 			csat[i] = temp;
 		}
+
+
 	}
 	for (i = 0; i < 10; i++) {
 		free(states[i]);
+		free(statestemp[i]);
 	}
 	free(states);
 	free(statestemp);
 	free(csat);
 	free(selected);
-	free(toRemove);
+	free(randomScan);
 
-	retval[0] = (double)(clock() - begin) / CLOCKS_PER_SEC;
+	retval[0] = (double)((clock() - begin) / CLOCKS_PER_SEC);
 	retval[1] = bitflips;
 	return retval;
 }
 
 int main() {
 	double* answer;
+	FILE* resultfile;
+	resultfile = fopen("results.txt", "a");
 	for (int j = 20; j <= 100; j += 25) {
 		//Solve 100 instances for each of 20, 50, 75, 100 variable instances
 		for (int i = 1; i < 101; i++)
 		{
-			readInput(j, i);
+			if (readInput(j, i) < 0) {
+				printf("Error in readInput()");
+				return -1;
+			}
 			//We would like runtime and bit flips. 
 			//answer[0] is runtime, answer[1] is bitflips
 			answer = solve();
 			//Write output to file
-
+			fwrite("%12.3f %12.3f\n", answer[0],answer[1], resultfile);
+			free(answer);
+			free(allClauses);
+			
 		}
 		if (j == 20) j += 5;
 	}

@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
+
 #define min(x,y) ((x < y)?(x:y))
 //Declare global result structs
 /*a) number of problems solved within the time
@@ -14,6 +16,13 @@ int* nodesGenerated;
 int* averageQuality;
 int furthest;
 
+typedef struct citypair_ {
+	int x;
+	int y;
+	int g;
+	double distanceFromStart;
+} citypair;
+
 citypair* citypairs;
 citypair** iclosed;
 
@@ -23,17 +32,10 @@ double cost(citypair* current, citypair* goal) {
 double heuristic(citypair* current, citypair* furthest) {
 	return sqrt((pow(current->x - furthest->x, 2) + pow(current->y - furthest->y, 2))) + furthest->distanceFromStart;
 }
-typedef struct citypair_ {
-	int x;
-	int y;
-	int g;
-	double distanceFromStart;
-} citypair;
-
 typedef struct pqn_ {
 	int id;
 	citypair *self;
-	pqn *child;
+	struct pqn_ *child;
 	double f;
 } pqn;
 
@@ -42,6 +44,7 @@ int* find_closest(citypair *dqd, int cities) {
 
 	int n1, n2, n3, n4;
 	double c1, c2, c3, c4;
+	c1 = c2 = c3 = c4 = 30000;
 	n1 = -1; n2 = -1; n3 = -1; n4 = -1;
 	int count = 0;
 	for (int i = 0; i < cities; i++) {
@@ -102,7 +105,7 @@ int* find_closest(citypair *dqd, int cities) {
 
 }
 
-int readOneProblem(int world, int cities) {
+void readOneProblem(int world, int cities) {
 	FILE* newfile;
 	char* filename = (char*)malloc(sizeof(char) * 100);
 	int temp;
@@ -118,7 +121,7 @@ int readOneProblem(int world, int cities) {
 
 	furthest = 1;
 	for (int i = 0; i < cities; i++) {
-		fscanf(newfile, "%*d %d %d", citypairs[i].x, citypairs[i].y);
+		fscanf(newfile, "%*d %d %d", &citypairs[i].x, &citypairs[i].y);
 		citypairs[i].g = 30000; // Essentially infinity
 		temp = cost(&citypairs[0], &citypairs[i]);
 		citypairs[i].distanceFromStart = temp;
@@ -191,10 +194,10 @@ int readOneProblem(int world, int cities) {
 	free(citypairs);
 }
 
-int readOneProblem_SA(int world, int cities) {
+void readOneProblem_SA(int world, int cities) {
 	int T = 1000;
 	citypair current = citypairs[0];
-	double E;
+	double E = 0;
 	double Enext;
 	int swap1, swap2;
 	citypair* temp;
@@ -205,12 +208,12 @@ int readOneProblem_SA(int world, int cities) {
 	fscanf(newfile, "%*d\n");
 	//Ignore the first line, it's just the number of cities in the file
 
-	*citypairs = (citypair*)malloc(sizeof(citypair) * cities);
+	citypairs = (citypair*)malloc(sizeof(citypair) * cities);
 	citypair **tempforswaps = (citypair**)malloc(sizeof(citypair*)*cities);
 	citypair **saveme = (citypair**)malloc(sizeof(citypair*)*cities);
 
 	for (int i = 0; i < cities; i++) {
-		fscanf(newfile, "%*d %d %d", citypairs[i].x, citypairs[i].y);
+		fscanf(newfile, "%*d %d %d", &citypairs[i].x, &citypairs[i].y);
 		tempforswaps[i] = &citypairs[i];
 		saveme[i] = &citypairs[i];
 	}
@@ -228,18 +231,18 @@ int readOneProblem_SA(int world, int cities) {
 		// Decrement T in some way
 		T--; 
 		//Swap two random cities and test if the evaluation is improved
-		swap1 = rand() % cities;
-		swap2 = rand() % cities;
+		swap1 = (rand() % (cities-1))+1;
+		swap2 = (rand() % (cities-1))+1;
 		temp = tempforswaps[swap1];
 		tempforswaps[swap1] = tempforswaps[swap2];
 		tempforswaps[swap2] = temp;
 
 		for (int i = 0; i < cities - 1; i++) {
-			Enext += cost(&tempforswaps[i], &tempforswaps[i + 1]);
+			Enext += cost(tempforswaps[i], tempforswaps[i + 1]);
 		}
-		Enext += cost(&tempforswaps[cities - 1], &tempforswaps[0]);
+		Enext += cost(tempforswaps[cities - 1], tempforswaps[0]);
 
-		if (Enext < E || rand()%1000 < 1000* exp(-abs(Enext-E) / T)) {//Propogate the swap to saveme
+		if (Enext < E || rand()%1000 < 1000* exp(-fabs(Enext-E) / T)) {//Propogate the swap to saveme
 			saveme[swap1] = saveme[swap2];
 			saveme[swap2] = temp;
 		}

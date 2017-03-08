@@ -24,9 +24,6 @@
     <ClCompile Include="citygen.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="travellingSales.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="uf20-91.tar\uf20-01.cnf">

@@ -24,7 +24,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Makefile</ConfigurationType>
+    <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
   </PropertyGroup>
@@ -97,7 +97,6 @@
   <ItemGroup>
     <ClCompile Include="citygen.c" />
     <ClCompile Include="main.c" />
-    <ClCompile Include="travellingSales.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="uf20-91.tar\uf20-01.cnf" />
