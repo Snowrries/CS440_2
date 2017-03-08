@@ -206,18 +206,21 @@ int readOneProblem_SA(int world, int cities) {
 	//Ignore the first line, it's just the number of cities in the file
 
 	*citypairs = (citypair*)malloc(sizeof(citypair) * cities);
-	citypair *tempforswaps = citypairs;
+	citypair **tempforswaps = (citypair**)malloc(sizeof(citypair*)*cities);
+	citypair **saveme = (citypair**)malloc(sizeof(citypair*)*cities);
 
 	for (int i = 0; i < cities; i++) {
 		fscanf(newfile, "%*d %d %d", citypairs[i].x, citypairs[i].y);
+		tempforswaps[i] = &citypairs[i];
+		saveme[i] = &citypairs[i];
 	}
 
 	// Initialize path by going down the list in order of the cities that were generated
 	// Then return to start city, and record total path length. 
 	for (int i = 0; i < cities-1; i++) {
-		E += cost(&tempforswaps[i], &tempforswaps[i + 1]);
+		E += cost(saveme[i], saveme[i + 1]);
 	}
-	E += cost(&tempforswaps[cities - 1], &tempforswaps[0]);
+	E += cost(saveme[cities - 1], saveme[0]);
 
 
 
@@ -227,24 +230,24 @@ int readOneProblem_SA(int world, int cities) {
 		//Swap two random cities and test if the evaluation is improved
 		swap1 = rand() % cities;
 		swap2 = rand() % cities;
-		temp = citypairs[swap1];
-		citypairs[swap1] = citypairs[swap2];
-		citypairs[swap2] = citypairs[swap1];
+		temp = tempforswaps[swap1];
+		tempforswaps[swap1] = tempforswaps[swap2];
+		tempforswaps[swap2] = temp;
 
 		for (int i = 0; i < cities - 1; i++) {
 			Enext += cost(&tempforswaps[i], &tempforswaps[i + 1]);
 		}
 		Enext += cost(&tempforswaps[cities - 1], &tempforswaps[0]);
 
-		if (Enext < E) {
-			citypairs = tempforswaps; // Potentially can't do this, maybe need to make new copy of wrapper and copy refrences and then use this as reference buccket,
+		if (Enext < E || rand()%1000 < 1000* exp(-abs(Enext-E) / T)) {//Propogate the swap to saveme
+			saveme[swap1] = saveme[swap2];
+			saveme[swap2] = temp;
 		}
-
-
-
 	}
+	//write saveme to file or average results
 
-
+	free(tempforswaps);
+	free(saveme);
 	free(filename);
 	free(citypairs);
 }
