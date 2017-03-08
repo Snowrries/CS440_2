@@ -13,7 +13,7 @@ int readInput(int vars, int i) {
 	char* format = (char*)malloc(sizeof(char) * 4); //cnf
 	char* filename = (char*)malloc(sizeof(char) * 50);
 	char check;
-	sprintf(filename, "uf20-91\\uf%d-0%d.cnf",vars, i);
+	sprintf(filename, "uf%d\\uf%d-0%d.cnf",vars, vars, i);
 	problems = fopen(filename, "r");
 	fgets(buffer, 1000, problems);
 
@@ -137,18 +137,17 @@ void selection(int *csat, int* ret) {
 
 double* solve() {
 	clock_t begin = clock();
+	//We keep 10 states, and there are 20, 50, 75, or 100 variables for each state.
 	int** states = (int**)malloc(sizeof(int*) * 10);
-	int** statestemp = (int**)malloc(sizeof(int*) * 10);;
+	int** statestemp = (int**)malloc(sizeof(int*) * 10);
 	int* csat = (int*)malloc(sizeof(int) * 10);
 	double* retval = (double*)malloc(sizeof(double) * 2);
-	double bitflips = 0;
-	int* randomScan = (int*)malloc(sizeof(int) * 10);
-	int forrs;
+	int* randomScan = (int*)malloc(sizeof(int) * variables);
 	int* selected = (int*)malloc(sizeof(int) * 8);
-	//Mallo c a new temporary array to hold states for copying elites and selecting reproducers
-	
 
-	int e1, e2, ei1, ei2, temp, tempa, improved;
+	double bitflips = 0;
+	int forrs, e1, e2, ei1, ei2, temp, tempa, improved;
+	
 	e1 = 0; e2 = 0;
 	ei1 = 0; ei2 = 0;
 	int i, j;
@@ -226,7 +225,7 @@ double* solve() {
 		}
 
 		//Perform disruptive mutation
-		for (i = 0; i < 7; i++) {
+		for (i = 0; i < 8; i++) {
 			if ((rand() % 10) < 8) { //90% chance of mutation
 				for (j = 0; j < variables; j++) {
 					if (rand() % 2) {
@@ -290,7 +289,7 @@ double* solve() {
 	free(selected);
 	free(randomScan);
 
-	retval[0] = (double)((clock() - begin) / CLOCKS_PER_SEC);
+	retval[0] = ((double)(1000*(clock() - begin)) / CLOCKS_PER_SEC);
 	retval[1] = bitflips;
 	return retval;
 }
@@ -311,12 +310,13 @@ int main() {
 			//answer[0] is runtime, answer[1] is bitflips
 			answer = solve();
 			//Write output to file
-			fwrite("%12.3f %12.3f\n", answer[0],answer[1], resultfile);
+			fprintf(resultfile, "%d vars %d file %12.3f ms %12.3f flips\n", j, i, answer[0],answer[1]);
 			free(answer);
 			free(allClauses);
 			
 		}
 		if (j == 20) j += 5;
 	}
+	fclose(resultfile);
 	return 0;
 }

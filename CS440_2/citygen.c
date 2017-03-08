@@ -9,7 +9,8 @@ void generatesingle(int id, int cities) {
 	for (int i = 0; i < cities; i++) {
 		fprintf(newfile, "%d %d %d", i, rand() % 101, rand() % 101);
 	}
-
+	free(filename);
+	fclose(newfile);
 }
 
 void genall() {
