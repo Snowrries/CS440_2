@@ -3,11 +3,20 @@
 #include <math.h>
 #include <time.h>
 #include <direct.h>
+#include <windows.h>
 
-int variables, clauses;
-int* allClauses;
+HANDLE ghMutex;
 
-int readInput(int vars, int i) {
+
+
+
+struct package {
+	int i;
+	int j;
+	HANDLE mutex;
+};
+
+int readInput(int vars, int i, int** allClauses, int* variables, int* clauses) {
 	FILE* problems;
 	char* buffer = (char*) malloc( sizeof(char) * 2000);
 	char* format = (char*)malloc(sizeof(char) * 4); //cnf
@@ -21,7 +30,7 @@ int readInput(int vars, int i) {
 		fgets(buffer, 1000, problems);
 	}
 
-	if (sscanf(buffer, "%c %s %d %d", &check, format, &variables, &clauses) < 0) {
+	if (sscanf(buffer, "%c %s %d %d", &check, format, variables, clauses) < 0) {
 		printf("error in scanf for problem statement");
 		return -1;
 	}
@@ -29,12 +38,13 @@ int readInput(int vars, int i) {
 		printf("File format error.\n");
 		return -1;
 	}
-	allClauses = (int*)malloc(sizeof(int)*clauses * 3);
+	*allClauses = (int*)malloc(sizeof(int)*(*clauses) * 3);
+	int* ac = *allClauses;
 	int shouldBeZero;
-	for (int j = 0; j < clauses; j++) {
+	for (int j = 0; j < (*clauses); j++) {
 		//repeat once for every clause
 		//Last one is a zero. Tailored only to work with 3 CNF
-		if (fscanf(problems, "%d %d %d %d", &allClauses[j * 3], &allClauses[j * 3 + 1], &allClauses[j * 3 + 2], &shouldBeZero) < 0) {
+		if (fscanf(problems, "%d %d %d %d", &ac[j * 3], &ac[j * 3 + 1], &ac[j * 3 + 2], &shouldBeZero) < 0) {
 			printf("Error in fscanf of clause %d", j);
 			return -1;
 		}
@@ -51,7 +61,7 @@ int readInput(int vars, int i) {
 }
 
 //Checks how many clauses are satisfied by the input. O(n)
-int clausesSatisfied(int* test) {
+int clausesSatisfied(int* test, int*allClauses, int clauses) {
 	int a, b, c;
 	int t1, t2, t3;
 	int d, e, f;
@@ -135,7 +145,7 @@ void selection(int *csat, int* ret) {
 	free(normalizedcsat);
 }
 
-double* solve() {
+double* solve(int* allClauses, int variables, int clauses) {
 	clock_t begin = clock();
 	//We keep 10 states, and there are 20, 50, 75, or 100 variables for each state.
 	int** states = (int**)malloc(sizeof(int*) * 10);
@@ -158,7 +168,7 @@ double* solve() {
 		for (j = 0; j < variables; j++) {
 			states[i][j] = rand() % 2;
 		}
-		csat[i] = clausesSatisfied(states[i]);
+		csat[i] = clausesSatisfied(states[i], allClauses, clauses);
 		if (csat[i] > e1) {
 			e1 = csat[i];
 			ei1 = i;
@@ -238,7 +248,7 @@ double* solve() {
 
 		//Update csat
 		for (i = 0; i < 10; i++) {
-			csat[i] = clausesSatisfied(states[i]);
+			csat[i] = clausesSatisfied(states[i], allClauses, clauses);
 		}
 		//Flip Heuristic
 		// 8*variable calls to clausesSatisfied, which iterates over all clauses
@@ -261,7 +271,7 @@ double* solve() {
 					forrs++;
 					states[i][selectedvar] = !states[i][selectedvar];
 					bitflips++;
-					tempa = clausesSatisfied(states[i]);
+					tempa = clausesSatisfied(states[i], allClauses, clauses);
 					if (temp >= tempa) {
 						improved = 0;
 						states[i][selectedvar] = !states[i][selectedvar];
@@ -293,30 +303,129 @@ double* solve() {
 	retval[1] = bitflips;
 	return retval;
 }
+DWORD WINAPI singleResult(LPVOID package){
+	int i = ((struct package*)package)->i;
+	int j = ((struct package*)package)->j;
+	HANDLE mutex = ((struct package*)package)->mutex;
+	int variables;
+	int clauses;
+	int* allClauses;
 
-int main() {
 	double* answer;
 	FILE* resultfile;
 	resultfile = fopen("results.txt", "a");
-	for (int j = 20; j <= 100; j += 25) {
-		//Solve 100 instances for each of 20, 50, 75, 100 variable instances
-		for (int i = 1; i < 101; i++)
-		{
-			if (readInput(j, i) < 0) {
+	if (readInput(j, i, &allClauses, &variables, &clauses) < 0) {
+		printf("Error in readInput()");
+		return -1;
+	}
+	//We would like runtime and bit flips. 
+	//answer[0] is runtime, answer[1] is bitflips
+	answer = solve(allClauses, variables, clauses);
+	//Write output to file
+	WaitForSingleObject( mutex,	INFINITE);  // no time-out interval
+	fprintf(resultfile, "%d vars %d file %12.3f ms %12.3f flips\n", j, i, answer[0], answer[1]);
+	ReleaseMutex(mutex);
+	free(answer);
+	free(allClauses);
+	free(package);
+	fclose(resultfile);
+	return 0;
+}
+int main() {
+	for (int j = 75; j <= 100; j += 25) {
+		for (int i = 1; i < 101; i++) {
+			int variables;
+			int clauses;
+			int* allClauses;
+
+			double* answer;
+			FILE* resultfile;
+			resultfile = fopen("results.txt", "a");
+			if (readInput(j, i, &allClauses, &variables, &clauses) < 0) {
 				printf("Error in readInput()");
 				return -1;
 			}
 			//We would like runtime and bit flips. 
 			//answer[0] is runtime, answer[1] is bitflips
-			answer = solve();
+			answer = solve(allClauses, variables, clauses);
 			//Write output to file
-			fprintf(resultfile, "%d vars %d file %12.3f ms %12.3f flips\n", j, i, answer[0],answer[1]);
+			fprintf(resultfile, "%d vars %d file %12.3f ms %12.3f flips\n", j, i, answer[0], answer[1]);
 			free(answer);
 			free(allClauses);
-			
+			fclose(resultfile);
 		}
-		if (j == 20) j += 5;
 	}
-	fclose(resultfile);
-	return 0;
+
 }
+//int main() {
+//	HANDLE ghEvents[100];
+//	HANDLE ghMutex = CreateMutex(
+//		NULL,              // default security attributes
+//		FALSE,             // initially not owned
+//		NULL);             // unnamed mutex
+//
+//	if (ghMutex == NULL)
+//	{
+//		printf("CreateMutex error: %d\n", GetLastError());
+//		return 1;
+//	}
+//	for (int j = 20; j <= 20; j += 25) {
+//		HANDLE threadArr[100];
+//		DWORD ThreadID;
+//		//Solve 100 instances for each of 20, 50, 75, 100 variable instances
+//		for (int i = 1; i < 101; i++)
+//		{
+//
+//			struct package* a = (struct package*) malloc(sizeof(struct package));
+//			a->i = i; 
+//			a->j = j;
+//			a->mutex = ghMutex;
+//
+//			threadArr[i-1] = CreateThread(
+//				NULL,       // default security attributes
+//				0,          // default stack size
+//				(LPTHREAD_START_ROUTINE)singleResult,
+//				a,          // thread function arguments
+//				0,          // default creation flags
+//				&ThreadID); // receive thread identifier
+//
+//			if (threadArr[i - 1] == NULL)
+//			{
+//				printf("CreateThread error: %d\n", GetLastError());
+//				return 1;
+//			}
+//
+//		}
+//		for (int i = 0; i < 100; i++) {
+//			DWORD dwEvent = WaitForSingleObject(threadArr[i], INFINITE);
+//			switch (dwEvent)
+//			{
+//			case WAIT_OBJECT_0:
+//				printf("Thread %d completed\n", i);
+//				break;
+//
+//			case WAIT_ABANDONED_0:
+//				// TODO: Perform tasks required by this event
+//				printf("Wait abandoned for some reason.\n");
+//				break;
+//
+//			case WAIT_TIMEOUT:
+//				printf("Wait timed out.\n");
+//				break;
+//
+//				// Return value is invalid.
+//			default:
+//				printf("Wait error: %d\n", GetLastError());
+//				//ExitProcess(0);
+//			}
+//		}
+//		scanf("q");
+//
+//		for (int i = 0; i < 100; i++) {
+//			CloseHandle(threadArr[i]);
+//		}
+//		if (j == 20) j += 5;
+//	}
+//	CloseHandle(ghMutex);
+//	return 0;
+//}
