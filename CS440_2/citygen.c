@@ -7,7 +7,9 @@ void generatesingle(int id, int cities) {
 	newfile = fopen(filename, "w");
 	fprintf(newfile,"%d\n", cities);
 	for (int i = 0; i < cities; i++) {
-		fprintf(newfile, "%d %d %d", i, rand() % 101, rand() % 101);
+		int a = rand() % 101;
+		int b = rand() % 101;
+		fprintf(newfile, "%d %d %d\n", i, a, b);
 	}
 	free(filename);
 	fclose(newfile);

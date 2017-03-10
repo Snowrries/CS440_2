@@ -23,7 +23,7 @@ int furthest;
 typedef struct citypair_ {
 	int x;
 	int y;
-	int g;
+	double g;
 	double distanceFromStart;
 } citypair;
 
@@ -33,8 +33,8 @@ citypair** iclosed;
 double cost(citypair* current, citypair* goal) {
 	return sqrt((pow(current->x - goal->x, 2) + pow(current->y - goal->y, 2)));
 }
-double heuristic(citypair* current, citypair* furthest) {
-	return sqrt((pow(current->x - furthest->x, 2) + pow(current->y - furthest->y, 2))) + furthest->distanceFromStart;
+double heuristic(citypair* current, citypair* ftr) {
+	return sqrt((pow(current->x - ftr->x, 2) + pow(current->y - ftr->y, 2))) + ftr->distanceFromStart;
 }
 typedef struct pqn_ {
 	int id;
@@ -148,6 +148,21 @@ void readOneProblem(int world, int cities) {
 		tempfree = fringehead;
 		fringehead = fringehead->child;
 		free(tempfree);
+
+		if (dqd == &citypairs[furthest]) {
+			furthest = -1;
+			for (int i = 0; i < cities; i++) {
+				if (iclosed[i] != NULL) {
+					temp = cost(&citypairs[0], &citypairs[i]);
+					if (temp > citypairs[furthest].distanceFromStart)
+						furthest = i;
+				}
+			}
+			if (furthest = -1) {
+				iclosed[0] = &citypairs[0];
+				furthest = 0;
+			}
+		}
 		//dequeue
 		//Do an O(n) check against every node to find the min(4, remaining nodes) closest neighbors, 
 		//then enqueue to fringe based on g + heuristic
@@ -208,7 +223,7 @@ void readOneProblem(int world, int cities) {
 
 void readOneProblem_SA(int world, int cities) {
 	clock_t begin = clock();
-	double T = 10000;
+	double T = 100000;
 	citypair current = citypairs[0];
 	double E = 0;
 	double Enext;
@@ -234,15 +249,15 @@ void readOneProblem_SA(int world, int cities) {
 	// Initialize path by going down the list in order of the cities that were generated
 	// Then return to start city, and record total path length. 
 	for (int i = 0; i < cities-1; i++) {
-		E += cost(saveme[i], saveme[i + 1]);
+		E += cost(&citypairs[i], &citypairs[i + 1]);
 	}
-	E += cost(saveme[cities - 1], saveme[0]);
+	E += cost(&citypairs[cities - 1], &citypairs[0]);
 
 
 
 	while (T > 0) {
 		// Decrement T in some way
-		T = T *.95 - 1; 
+		T = T * .99991; 
 		if (T < 1) T = 0;
 		//Swap two random cities and test if the evaluation is improved
 		nodesGenerated++;
@@ -257,8 +272,9 @@ void readOneProblem_SA(int world, int cities) {
 			Enext += cost(tempforswaps[i], tempforswaps[i + 1]);
 		}
 		Enext += cost(tempforswaps[cities - 1], tempforswaps[0]);
+		double blah;
 
-		if (Enext < E || rand()%1000 < 1000* exp(-fabs(Enext-E) / T)) {//Propogate the swap to saveme
+		if (Enext < E || rand()%1000 < (blah = 1000* exp(-fabs(Enext-E) / T))) {//Propogate the swap to saveme
 			saveme[swap1] = saveme[swap2];
 			saveme[swap2] = temp;
 			E = Enext;
@@ -287,7 +303,7 @@ void work10() {
 		problemsSolved = 0;
 		countdown = clock();
 		world = -1;
-		cities = 10;
+		cities = 25;
 		while ((double)(clock() - countdown) / CLOCKS_PER_SEC < 600) {
 			//Do one problem
 			world += 1;
@@ -308,7 +324,7 @@ void work10() {
 			if (twice == 0) {
 				readOneProblem(world, cities);
 				//fprintf(resultfile, "Astar %d world %d cities %12.3f ms %d nodesGenerated %12.3f Quality \n", world, cities, averageTime, nodesGenerated, averageQuality);
-				//problemsSolved++;
+				problemsSolved++;
 			}
 			else {
 				readOneProblem_SA(world, cities);
