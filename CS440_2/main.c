@@ -332,7 +332,7 @@ DWORD WINAPI singleResult(LPVOID package){
 	return 0;
 }
 int main() {
-	for (int j = 75; j <= 100; j += 25) {
+	for (int j = 20; j <= 100; j += 25) {
 		for (int i = 1; i < 101; i++) {
 			int variables;
 			int clauses;
