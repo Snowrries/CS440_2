@@ -3,7 +3,7 @@
 void generatesingle(int id, int cities) {
 	FILE* newfile;
 	char* filename = (char*)malloc(sizeof(char) * 100);
-	sprintf(filename, "world%2d%3d", id, cities);
+	sprintf(filename, "worlds\\world%d_%d", id, cities);
 	newfile = fopen(filename, "w");
 	fprintf(newfile,"%d\n", cities);
 	for (int i = 0; i < cities; i++) {

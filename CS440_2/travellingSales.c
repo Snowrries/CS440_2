@@ -6,14 +6,18 @@
 
 #define min(x,y) ((x < y)?(x:y))
 //Declare global result structs
-/*a) number of problems solved within the time
-threshold, b) average solution time, c) number of nodes generated, and d) average solution
-quality, as the size of challenge increases(i.e., average for the 10 - city challenges, then for
-	the 25 - city ones, etc.)*/
-int* problemsSolved;
-float* averageTime;
-int* nodesGenerated;
-int* averageQuality;
+/*
+a) number of problems solved within the time threshold,
+b) average solution time,
+c) number of nodes generated, and
+d) average solutionquality, as the size of challenge increases
+(i.e., average for the 10-city challenges, then for the 25-city ones, etc.)
+
+Plot how the cost of the solution changes during example runs of the algorithm on some of the 25-size examples.*/
+int problemsSolved;
+double averageTime;
+int nodesGenerated;
+double averageQuality;
 int furthest;
 
 typedef struct citypair_ {
@@ -106,14 +110,17 @@ int* find_closest(citypair *dqd, int cities) {
 }
 
 void readOneProblem(int world, int cities) {
+	clock_t begin = clock();
 	FILE* newfile;
 	char* filename = (char*)malloc(sizeof(char) * 100);
+	char* buffer = (char*)malloc(sizeof(char) * 10);
 	int temp;
-	sprintf(filename, "world%2d%3d", world, cities);
+	sprintf(filename, "worlds\\world%d_%d", world, cities);
 	newfile = fopen(filename, "r");
-	pqn* fringehead;
+	pqn* fringehead; 
+	citypair* dqd;
 	pqn* tempfree;
-	fscanf(newfile, "%*d\n");
+	fgets(buffer, 10, newfile);
 	//Ignore the first line, it's just the number of cities in the file
 
 	citypairs = (citypair*)malloc(sizeof(citypair) * cities);
@@ -136,7 +143,7 @@ void readOneProblem(int world, int cities) {
 	fringehead->self = &citypairs[0];
 
 	while (fringehead != NULL) {
-		citypair* dqd = fringehead->self;
+		dqd = fringehead->self;
 		iclosed[fringehead->id] = NULL;
 		tempfree = fringehead;
 		fringehead = fringehead->child;
@@ -148,7 +155,7 @@ void readOneProblem(int world, int cities) {
 		int* neighbors = find_closest(dqd, cities);
 		double currentg;
 		double cost2next;
-		for (int j = 0; j < 4; j++) {
+		for (int j = 0; j < 1; j++) {//Use only one neighbor and see if it works
 			//The four closest neighbors; enqueue them if the current calculated g value is less than 
 			//Make sure the enqueue operation keeps the list in sorted order of f
 			if (neighbors[j] != -1) {
@@ -158,10 +165,12 @@ void readOneProblem(int world, int cities) {
 					iclosed[neighbors[j]]->g = cost2next;
 					//Enqueue the neighbor into the fringe!
 					//Node creation
+					nodesGenerated++;
 					pqn* fringenode = (pqn*) malloc(sizeof(pqn));
 					fringenode->self = iclosed[neighbors[j]];
 					fringenode->f = cost2next + heuristic(iclosed[neighbors[j]], iclosed[furthest]);
-					fringehead->child = NULL;
+					fringenode->child = NULL;
+					fringenode->id = neighbors[j];
 					pqn* anothernode = fringehead;
 					//Search for insert index
 					if (fringehead == NULL) {
@@ -177,11 +186,13 @@ void readOneProblem(int world, int cities) {
 						citypair savedRef;
 						while (anothernode != NULL) {
 							if (fringenode->f < anothernode->f) {
+								anothernode->child = fringenode->child;
 								fringenode->child = anothernode;
 								break;
 							}
 							if (anothernode->child == NULL) {
 								anothernode->child = fringenode;
+								break;
 							}
 							anothernode = anothernode->child;
 						}
@@ -189,13 +200,15 @@ void readOneProblem(int world, int cities) {
 				}
 			}
 		}
-	}
-
+	}	
+	averageTime = ((double)(1000 * (clock() - begin)) / CLOCKS_PER_SEC);
+	averageQuality = dqd->g + cost(dqd, citypairs); 
 	free(citypairs);
 }
 
 void readOneProblem_SA(int world, int cities) {
-	int T = 1000;
+	clock_t begin = clock();
+	double T = 10000;
 	citypair current = citypairs[0];
 	double E = 0;
 	double Enext;
@@ -203,7 +216,7 @@ void readOneProblem_SA(int world, int cities) {
 	citypair* temp;
 	FILE* newfile;
 	char* filename = (char*)malloc(sizeof(char) * 100);
-	sprintf(filename, "world%2d%3d", world, cities);
+	sprintf(filename, "worlds\\world%d_%d", world, cities);
 	newfile = fopen(filename, "r");
 	fscanf(newfile, "%*d\n");
 	//Ignore the first line, it's just the number of cities in the file
@@ -229,13 +242,16 @@ void readOneProblem_SA(int world, int cities) {
 
 	while (T > 0) {
 		// Decrement T in some way
-		T--; 
+		T = T *.95 - 1; 
+		if (T < 1) T = 0;
 		//Swap two random cities and test if the evaluation is improved
+		nodesGenerated++;
 		swap1 = (rand() % (cities-1))+1;
 		swap2 = (rand() % (cities-1))+1;
 		temp = tempforswaps[swap1];
 		tempforswaps[swap1] = tempforswaps[swap2];
 		tempforswaps[swap2] = temp;
+		Enext = 0;
 
 		for (int i = 0; i < cities - 1; i++) {
 			Enext += cost(tempforswaps[i], tempforswaps[i + 1]);
@@ -245,9 +261,13 @@ void readOneProblem_SA(int world, int cities) {
 		if (Enext < E || rand()%1000 < 1000* exp(-fabs(Enext-E) / T)) {//Propogate the swap to saveme
 			saveme[swap1] = saveme[swap2];
 			saveme[swap2] = temp;
+			E = Enext;
 		}
 	}
 	//write saveme to file or average results
+
+	averageTime = ((double)(1000 * (clock() - begin)) / CLOCKS_PER_SEC);
+	averageQuality = E;
 
 	free(tempforswaps);
 	free(saveme);
@@ -258,21 +278,13 @@ void readOneProblem_SA(int world, int cities) {
 void work10() {
 
 	//Init global result structs
-	problemsSolved = (int*) malloc(sizeof(int)*4);
-	averageTime = (float*)malloc(sizeof(float) * 4);
-	nodesGenerated = (int*)malloc(sizeof(int) * 4);
-	averageQuality = (int*)malloc(sizeof(int) * 4);
 	clock_t countdown;
 	int world, cities;
+	FILE* resultfile;
+	resultfile = fopen("results_TSP.txt", "a");
 
 	for (int twice = 0; twice < 2; twice++) {
-		for (int i = 0; i < 4; i++) {
-			problemsSolved[i] = 0;
-			averageTime[i] = 0;
-			nodesGenerated[i] = 0;
-			averageQuality[i] = 0;
-		}
-
+		problemsSolved = 0;
 		countdown = clock();
 		world = -1;
 		cities = 10;
@@ -284,20 +296,39 @@ void work10() {
 				if (cities == 10) {
 					cities -= 10;
 				}
-				if (cities == 100) {
-					continue; // Finished all problems
+				if (cities == 25) {//100
+					break; // Finished all problems
 				}
 				cities += 25;
+				world = 0;
 			}
-			if (twice == 0)
+			averageTime = 0;
+			nodesGenerated = 0;
+			averageQuality = 0;
+			if (twice == 0) {
 				readOneProblem(world, cities);
-			else
+				//fprintf(resultfile, "Astar %d world %d cities %12.3f ms %d nodesGenerated %12.3f Quality \n", world, cities, averageTime, nodesGenerated, averageQuality);
+				//problemsSolved++;
+			}
+			else {
 				readOneProblem_SA(world, cities);
+				fprintf(resultfile, "SA %d world %d cities %12.3f ms %d nodesGenerated %12.3f Quality \n", world, cities, averageTime, nodesGenerated, averageQuality);
+				problemsSolved++;
+			}
+
 		}
 		//write results to disc
+		/*
+		a) number of problems solved within the time threshold,
+		b) average solution time,
+		c) number of nodes generated, and
+		d) average solutionquality, as the size of challenge increases
+		(i.e., average for the 10-city challenges, then for the 25-city ones, etc.)
 
+		Plot how the cost of the solution changes during example runs of the algorithm on some of the 25-size examples.		*/
 	}
 
 	//free all the things
 
+	fclose(resultfile);
 }

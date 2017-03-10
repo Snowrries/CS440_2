@@ -331,7 +331,7 @@ DWORD WINAPI singleResult(LPVOID package){
 	fclose(resultfile);
 	return 0;
 }
-int main() {
+int main() {/*
 	for (int j = 20; j <= 100; j += 25) {
 		for (int i = 1; i < 101; i++) {
 			int variables;
@@ -354,7 +354,13 @@ int main() {
 			free(allClauses);
 			fclose(resultfile);
 		}
-	}
+	}*/
+	//genall();
+	work10();
+
+
+
+
 
 }
 //int main() {
