@@ -264,8 +264,7 @@ void readOneProblem(int world, int cities) {
 
 void readOneProblem_SA(int world, int cities) {
 	clock_t begin = clock();
-	double T = 100000;
-	citypair current = citypairs[0];
+	double T = cities * 100;
 	double E = 0;
 	double Enext;
 	int swap1, swap2;
@@ -296,7 +295,7 @@ void readOneProblem_SA(int world, int cities) {
 
 	while (T > 0) {
 		// Decrement T in some way
-		T = T*.999;
+		T = T * ( 1.0 - 1.0 / (cities * 1000.0));
 		if (T < 1) T = 0;
 		//Swap two random cities and test if the evaluation is improved
 		nodesGenerated++;
@@ -311,9 +310,8 @@ void readOneProblem_SA(int world, int cities) {
 			Enext += cost(tempforswaps[i], tempforswaps[i + 1]);
 		}
 		Enext += cost(tempforswaps[cities - 1], tempforswaps[0]);
-		double blah;
 
-		if (Enext < E || rand()%1000 < (blah = 1000* exp(-fabs(Enext-E) / T))) {//Propogate the swap to saveme
+		if (Enext < E || rand()%1000 < (1000* exp(-fabs(Enext-E) / T))) {//Propogate the swap to saveme
 			saveme[swap1] = saveme[swap2];
 			saveme[swap2] = temp;
 			E = Enext;
@@ -370,6 +368,7 @@ void work10() {
 				fprintf(resultfile, "SA %d world %d cities %12.3f ms %d nodesGenerated %12.3f Quality \n", world, cities, averageTime, nodesGenerated, averageQuality);
 				problemsSolved++;
 			}
+			countdown = clock();
 
 		}
 		//write results to disc
