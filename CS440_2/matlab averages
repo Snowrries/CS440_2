@@ -1,0 +1,67 @@
+
+avg_astar_ms_10 = sum(astar_ms(1:25))/25
+
+avg_astar_ms_25 = sum(astar_ms(25:50))/25
+
+avg_astar_ms_50 = sum(astar_ms(50:75))/25
+
+avg_astar_ms_75 = sum(astar_ms(75:100))/25
+
+avg_astar_ms_100 = sum(astar_ms(100:125))/25
+
+
+avg_astar_quality_10 = sum(astar_quality(1:25))/25
+
+avg_astar_quality_25 = sum(astar_quality(25:50))/25
+
+avg_astar_quality_50 = sum(astar_quality(50:75))/25
+
+avg_astar_quality_75 = sum(astar_quality(75:100))/25
+
+avg_astar_quality_100 = sum(astar_quality(100:125))/25
+
+
+avg_astar_generated_10 = sum(astar_generated(1:25))/25
+
+avg_astar_generated_25 = sum(astar_generated(25:50))/25
+
+avg_astar_generated_50 = sum(astar_generated(50:75))/25
+
+avg_astar_generated_75 = sum(astar_generated(75:100))/25
+
+avg_astar_generated_100 = sum(astar_generated(100:125))/25
+
+
+avg_sa_ms_10 = sum(sa_ms(1:25))/25
+
+avg_sa_ms_25 = sum(sa_ms(25:50))/25
+
+avg_sa_ms_50 = sum(sa_ms(50:75))/25
+
+avg_sa_ms_75 = sum(sa_ms(75:100))/25
+
+avg_sa_ms_100 = sum(sa_ms(100:125))/25
+
+
+avg_sa_quality_10 = sum(sa_quality(1:25))/25
+
+avg_sa_quality_25 = sum(sa_quality(25:50))/25
+
+avg_sa_quality_50 = sum(sa_quality(50:75))/25
+
+avg_sa_quality_75 = sum(sa_quality(75:100))/25
+
+avg_sa_quality_100 = sum(sa_quality(100:125))/25
+
+
+avg_sa_generated_10 = sum(sa_generated(1:25))/25
+
+avg_sa_generated_25 = sum(sa_generated(25:50))/25
+
+avg_sa_generated_50 = sum(sa_generated(50:75))/25
+
+avg_sa_generated_75 = sum(sa_generated(75:100))/25
+
+avg_sa_generated_100 = sum(sa_generated(100:125))/25
+
+

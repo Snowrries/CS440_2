@@ -13,7 +13,8 @@ c) number of nodes generated, and
 d) average solutionquality, as the size of challenge increases
 (i.e., average for the 10-city challenges, then for the 25-city ones, etc.)
 
-Plot how the cost of the solution changes during example runs of the algorithm on some of the 25-size examples.*/
+Plot how the cost of the solution changes during example runs of the algorithm on some of the 25-size examples.
+*/
 int problemsSolved;
 double averageTime;
 int nodesGenerated;
@@ -31,7 +32,12 @@ citypair* citypairs;
 citypair** iclosed;
 
 double cost(citypair* current, citypair* goal) {
-	return sqrt((pow(current->x - goal->x, 2) + pow(current->y - goal->y, 2)));
+	double a = current->x - goal->x;
+	double b = current->y - goal->y;
+	double c = pow(a, 2);
+	double d = pow(b, 2);
+	double e = sqrt(c + d);
+	return e;
 }
 double heuristic(citypair* current, citypair* ftr) {
 	return sqrt((pow(current->x - ftr->x, 2) + pow(current->y - ftr->y, 2))) + ftr->distanceFromStart;
@@ -110,6 +116,9 @@ int* find_closest(citypair *dqd, int cities) {
 }
 
 void readOneProblem(int world, int cities) {
+	if (world == 10 && cities == 100) {
+		printf("stop!");
+	}
 	clock_t begin = clock();
 	FILE* newfile;
 	char* filename = (char*)malloc(sizeof(char) * 100);
@@ -150,17 +159,13 @@ void readOneProblem(int world, int cities) {
 		free(tempfree);
 
 		if (dqd == &citypairs[furthest]) {
-			furthest = -1;
+			furthest = 0;
 			for (int i = 0; i < cities; i++) {
 				if (iclosed[i] != NULL) {
 					temp = cost(&citypairs[0], &citypairs[i]);
 					if (temp > citypairs[furthest].distanceFromStart)
 						furthest = i;
 				}
-			}
-			if (furthest = -1) {
-				iclosed[0] = &citypairs[0];
-				furthest = 0;
 			}
 		}
 		//dequeue
@@ -170,22 +175,49 @@ void readOneProblem(int world, int cities) {
 		int* neighbors = find_closest(dqd, cities);
 		double currentg;
 		double cost2next;
-		for (int j = 0; j < 1; j++) {//Use only one neighbor and see if it works
+		for (int j = 0; j < 4; j++) {//Use only one neighbor and see if it works
 			//The four closest neighbors; enqueue them if the current calculated g value is less than 
 			//Make sure the enqueue operation keeps the list in sorted order of f
 			if (neighbors[j] != -1) {
 				currentg = iclosed[neighbors[j]]->g;
 				cost2next = dqd->g + cost(dqd, iclosed[neighbors[j]]);
-				if (cost2next < currentg) {
+//				if (cost2next < currentg) {
 					iclosed[neighbors[j]]->g = cost2next;
+					int updating = 0;
+					//Check to see if the node exists in the fringe (O(n) operation)
+					//If it exists, we update. Otherwise we insert. 
+					pqn* anotheranother = fringehead;
+					pqn* anotherprev = NULL;
+					pqn* fringenode;
+					while (anotheranother != NULL) {
+						if (anotheranother->id == neighbors[j]) {
+							//anotheranother->self->g = currentg;
+							anotheranother->f = cost2next + heuristic(iclosed[neighbors[j]], &citypairs[furthest]);
+							updating = 1;
+							if(anotherprev != NULL)
+								anotherprev->child = anotheranother->child;
+							else if (anotheranother->child != NULL) {
+								fringehead = anotheranother->child;
+							}
+							anotheranother->child = NULL;
+							fringenode = anotheranother;
+
+							break;
+						}
+						anotherprev = anotheranother;
+						anotheranother = anotheranother->child;
+					}
+					if (!updating) {
+						fringenode = (pqn*)malloc(sizeof(pqn));
+						fringenode->self = iclosed[neighbors[j]];
+						fringenode->f = cost2next + heuristic(iclosed[neighbors[j]], &citypairs[furthest]);
+						fringenode->child = NULL;
+						fringenode->id = neighbors[j];
+					}
+
 					//Enqueue the neighbor into the fringe!
 					//Node creation
 					nodesGenerated++;
-					pqn* fringenode = (pqn*) malloc(sizeof(pqn));
-					fringenode->self = iclosed[neighbors[j]];
-					fringenode->f = cost2next + heuristic(iclosed[neighbors[j]], iclosed[furthest]);
-					fringenode->child = NULL;
-					fringenode->id = neighbors[j];
 					pqn* anothernode = fringehead;
 					//Search for insert index
 					if (fringehead == NULL) {
@@ -195,29 +227,38 @@ void readOneProblem(int world, int cities) {
 						// If the current node is less costly than the first node in the list,
 						// replace the head reference
 						if (fringenode->f < fringehead->f) { 
-							fringenode->child = fringehead;
+							if(fringenode->id != fringehead->id)
+								fringenode->child = fringehead;
 							fringehead = fringenode;
 						}
-						citypair savedRef;
-						while (anothernode != NULL) {
-							if (fringenode->f < anothernode->f) {
-								anothernode->child = fringenode->child;
-								fringenode->child = anothernode;
-								break;
+						else {
+
+							while (anothernode != NULL) {
+								if (fringenode->f < anothernode->f) {
+									anotherprev->child = fringenode;
+									fringenode->child = anothernode;
+									break;
+								}
+								else if (anothernode->child == NULL) {
+									if(fringenode->id != anothernode->id)
+										anothernode->child = fringenode;
+									break;
+								}
+								anotherprev = anothernode;
+								anothernode = anothernode->child;
 							}
-							if (anothernode->child == NULL) {
-								anothernode->child = fringenode;
-								break;
-							}
-							anothernode = anothernode->child;
 						}
 					}
 				}
-			}
+				//End of if(cost2next < currentg)
+			//}
 		}
 	}	
-	averageTime = ((double)(1000 * (clock() - begin)) / CLOCKS_PER_SEC);
+	averageTime = ((double)(1000.0 * (clock() - begin)) / CLOCKS_PER_SEC);
 	averageQuality = dqd->g + cost(dqd, citypairs); 
+	free(filename);
+	free(buffer);
+	free(iclosed);
 	free(citypairs);
 }
 
@@ -253,11 +294,9 @@ void readOneProblem_SA(int world, int cities) {
 	}
 	E += cost(&citypairs[cities - 1], &citypairs[0]);
 
-
-
 	while (T > 0) {
 		// Decrement T in some way
-		T = T * .99991; 
+		T = T*.999;
 		if (T < 1) T = 0;
 		//Swap two random cities and test if the evaluation is improved
 		nodesGenerated++;
@@ -282,7 +321,7 @@ void readOneProblem_SA(int world, int cities) {
 	}
 	//write saveme to file or average results
 
-	averageTime = ((double)(1000 * (clock() - begin)) / CLOCKS_PER_SEC);
+	averageTime = ((double)(1000.0 * (clock() - begin)) / CLOCKS_PER_SEC);
 	averageQuality = E;
 
 	free(tempforswaps);
@@ -303,7 +342,7 @@ void work10() {
 		problemsSolved = 0;
 		countdown = clock();
 		world = -1;
-		cities = 25;
+		cities = 10;
 		while ((double)(clock() - countdown) / CLOCKS_PER_SEC < 600) {
 			//Do one problem
 			world += 1;
@@ -312,7 +351,7 @@ void work10() {
 				if (cities == 10) {
 					cities -= 10;
 				}
-				if (cities == 25) {//100
+				if (cities == 100) {//100
 					break; // Finished all problems
 				}
 				cities += 25;
@@ -323,7 +362,7 @@ void work10() {
 			averageQuality = 0;
 			if (twice == 0) {
 				readOneProblem(world, cities);
-				//fprintf(resultfile, "Astar %d world %d cities %12.3f ms %d nodesGenerated %12.3f Quality \n", world, cities, averageTime, nodesGenerated, averageQuality);
+				fprintf(resultfile, "Astar %d world %d cities %12.3f ms %d nodesGenerated %12.3f Quality \n", world, cities, averageTime, nodesGenerated, averageQuality);
 				problemsSolved++;
 			}
 			else {
@@ -341,7 +380,8 @@ void work10() {
 		d) average solutionquality, as the size of challenge increases
 		(i.e., average for the 10-city challenges, then for the 25-city ones, etc.)
 
-		Plot how the cost of the solution changes during example runs of the algorithm on some of the 25-size examples.		*/
+		Plot how the cost of the solution changes during example runs of the algorithm on some of the 25-size examples.
+		*/
 	}
 
 	//free all the things
